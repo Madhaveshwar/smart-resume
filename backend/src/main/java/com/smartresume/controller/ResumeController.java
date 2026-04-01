@@ -1,13 +1,17 @@
-package com.smartresume.controller;
-
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.*;
-
 @RestController
 @CrossOrigin(origins = "*")
 public class ResumeController {
+
+    @GetMapping("/api/job-titles")
+    public List<String> getJobTitles() {
+        return Arrays.asList(
+                "Software Engineer",
+                "Data Scientist",
+                "Web Developer",
+                "AI Engineer",
+                "DevOps Engineer"
+        );
+    }
 
     @PostMapping("/api/process")
     public Map<String, Object> processResumes(
@@ -17,7 +21,6 @@ public class ResumeController {
     ) {
 
         Map<String, Object> response = new HashMap<>();
-
         response.put("jobTitle", jobTitle);
         response.put("totalResumes", files.size());
 

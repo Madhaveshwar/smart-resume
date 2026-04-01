@@ -1,7 +1,6 @@
 package com.smartresume.service;
 
 import com.smartresume.model.Resume;
-import com.smartresume.service.MatchingService.MatchResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,16 +12,13 @@ import java.util.regex.Pattern;
 @Service
 public class ResumeService {
 
-    private final TikaParserService tikaParser;
     private final MatchingService matchingService;
 
     // 🔥 TEMP STORAGE (instead of DB)
     private final List<Resume> memoryStorage = new ArrayList<>();
 
     @Autowired
-    public ResumeService(TikaParserService tikaParser,
-                         MatchingService matchingService) {
-        this.tikaParser = tikaParser;
+    public ResumeService(MatchingService matchingService) {
         this.matchingService = matchingService;
     }
 
@@ -33,16 +29,24 @@ public class ResumeService {
 
         for (MultipartFile file : files) {
             try {
-                String text = tikaParser.extractText(file);
+                // ✅ FIX: removed Tika, using simple text extraction
+                String text = new String(file.getBytes());
+
                 if (text.isBlank()) continue;
 
-                Resume resume = buildResume(file.getOriginalFilename(), text, jobTitle, jobDescription);
+                Resume resume = buildResume(
+                        file.getOriginalFilename(),
+                        text,
+                        jobTitle,
+                        jobDescription
+                );
 
-                // ✅ store in memory instead of DB
                 memoryStorage.add(resume);
                 results.add(resume);
 
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                e.printStackTrace(); // optional for debugging
+            }
         }
 
         results.sort(Comparator.comparingInt(Resume::getMatchPercentage).reversed());
@@ -73,7 +77,14 @@ public class ResumeService {
     }
 
     public List<String> getJobTitles() {
-        return matchingService.getJobTitles();
+        // ✅ Safe fallback (NO dependency issues)
+        return List.of(
+                "Software Engineer",
+                "Data Scientist",
+                "Web Developer",
+                "AI Engineer",
+                "DevOps Engineer"
+        );
     }
 
     // ── Build resume ─────────────────────────

@@ -1,3 +1,4 @@
 // ── API Base URL ──────────────────────────────────────────────────
-// Global API base (used in all JS files)
-window.API_BASE = "http://localhost:8081/api";
+
+// ✅ Your Render Backend
+window.API_BASE = "https://smart-resume-cb5c.onrender.com/api";

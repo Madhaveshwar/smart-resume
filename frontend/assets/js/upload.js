@@ -1,45 +1,44 @@
-// ── LOAD JOB TITLES (FIXED) ─────────────────────────
-try {
-  console.log("🌐 Calling API:", window.API_BASE + "/api/job-titles");
-
-  const res = await fetch(window.API_BASE + "/api/job-titles");
+// ── LOAD JOB TITLES (FINAL FIX) ─────────────────────────
+async function loadJobTitles() {
+  console.log("🔥 Loading job titles...");
 
   const sel = document.getElementById("jobTitleSelect");
 
-  if (!res.ok) {
-    throw new Error("API failed: " + res.status);
+  if (!sel) {
+    console.error("❌ Dropdown not found");
+    return;
   }
 
-  const titles = await res.json();
+  try {
+    const res = await fetch(window.API_BASE + "/api/job-titles");
 
-  console.log("✅ Titles received:", titles);
+    if (!res.ok) throw new Error("API failed");
 
-  // 🔥 IMPORTANT FIX
-  if (!titles || titles.length === 0) {
-    throw new Error("No data from API");
+    const titles = await res.json();
+
+    console.log("✅ Titles:", titles);
+
+    sel.innerHTML = `<option value="">-- Select or leave blank --</option>`;
+
+    titles.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t;
+      sel.appendChild(opt);
+    });
+
+  } catch (e) {
+    console.error("❌ API FAILED → using fallback", e);
+
+    // ✅ fallback so UI NEVER empty
+    sel.innerHTML = `
+      <option value="">-- Select or leave blank --</option>
+      <option>Software Engineer</option>
+      <option>Data Scientist</option>
+      <option>Web Developer</option>
+      <option>AI Engineer</option>
+      <option>Backend Developer</option>
+      <option>Frontend Developer</option>
+    `;
   }
-
-  sel.innerHTML = `<option value="">-- Select or leave blank --</option>`;
-
-  titles.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t;
-    opt.textContent = t;
-    sel.appendChild(opt);
-  });
-
-} catch (e) {
-  console.error("❌ Job titles error:", e);
-
-  // 🔥 FALLBACK (VERY IMPORTANT)
-  const sel = document.getElementById("jobTitleSelect");
-
-  sel.innerHTML = `
-    <option>Software Engineer</option>
-    <option>Data Scientist</option>
-    <option>Web Developer</option>
-    <option>AI Engineer</option>
-    <option>Backend Developer</option>
-    <option>Frontend Developer</option>
-  `;
 }

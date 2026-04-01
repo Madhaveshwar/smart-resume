@@ -1,25 +1,37 @@
-@PostMapping("/api/process")
+package com.smartresume.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.*;
+
+@RestController
 @CrossOrigin(origins = "*")
-public Map<String, Object> processResumes(
-        @RequestParam("pdf_docs") List<MultipartFile> files,
-        @RequestParam(value = "job_title", required = false) String jobTitle,
-        @RequestParam(value = "job_desc", required = false) String jobDesc
-) {
-    Map<String, Object> response = new HashMap<>();
+public class ResumeController {
 
-    response.put("jobTitle", jobTitle);
-    response.put("totalResumes", files.size());
+    @PostMapping("/api/process")
+    public Map<String, Object> processResumes(
+            @RequestParam("pdf_docs") List<MultipartFile> files,
+            @RequestParam(value = "job_title", required = false) String jobTitle,
+            @RequestParam(value = "job_desc", required = false) String jobDesc
+    ) {
 
-    List<Map<String, Object>> resumes = new ArrayList<>();
+        Map<String, Object> response = new HashMap<>();
 
-    for (MultipartFile file : files) {
-        Map<String, Object> r = new HashMap<>();
-        r.put("name", file.getOriginalFilename());
-        r.put("score", (int)(Math.random() * 100)); // dummy score
-        resumes.add(r);
+        response.put("jobTitle", jobTitle);
+        response.put("totalResumes", files.size());
+
+        List<Map<String, Object>> resumes = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("name", file.getOriginalFilename());
+            r.put("score", (int)(Math.random() * 100));
+            resumes.add(r);
+        }
+
+        response.put("resumes", resumes);
+
+        return response;
     }
-
-    response.put("resumes", resumes);
-
-    return response;
 }

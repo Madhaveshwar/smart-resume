@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "*")  // ✅ ADD THIS
+@CrossOrigin(origins = "*")   // ✅ VERY IMPORTANT
 public class ResumeController {
 
     @GetMapping("/api/job-titles")

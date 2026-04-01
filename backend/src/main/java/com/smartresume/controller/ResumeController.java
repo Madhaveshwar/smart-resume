@@ -9,8 +9,7 @@ import java.util.*;
 @RequestMapping("/api")
 @CrossOrigin(origins = {
     "https://smart-resume-inky.vercel.app",
-    "http://localhost:3000",
-    "*"
+    "http://localhost:3000"
 }) // allow frontend
 public class ResumeController {
 

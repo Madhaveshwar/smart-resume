@@ -51,26 +51,30 @@ async function loadJobTitles() {
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("✅ DOM loaded");
 
-  // 🔥 FIX: Load job titles
   await loadJobTitles();
 
-  // ── FILE UPLOAD ─────────────────────
   const fileInput = document.getElementById("fileInput");
   const submitBtn = document.getElementById("submitBtn");
 
   if (submitBtn && fileInput) {
     submitBtn.addEventListener("click", async () => {
 
-      if (fileInput.files.length === 0) {
+      if (!fileInput.files || fileInput.files.length === 0) {
         alert("Please select a file.");
         return;
       }
+
+      const file = fileInput.files[0];
+
+      console.log("📂 Selected file:", file);
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = "Analysing...";
 
       const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
+
+      // ✅ IMPORTANT FIX (match backend exactly)
+      formData.append("file", file);
 
       formData.append(
         "jobTitle",
@@ -83,21 +87,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
 
       try {
+        console.log("🚀 Sending request...");
+
         const res = await fetch(window.API_BASE + "/api/upload", {
           method: "POST",
           body: formData
         });
 
-        if (!res.ok) throw new Error("Upload failed");
+        console.log("📡 Response status:", res.status);
+
+        if (!res.ok) {
+          throw new Error("Upload failed: " + res.status);
+        }
 
         const data = await res.json();
-        console.log("✅ Response:", data);
+        console.log("✅ Response data:", data);
 
         showResults(data);
 
       } catch (e) {
         console.error("❌ Upload error:", e);
-        alert("Error uploading file.");
+        alert("Upload failed. Check console.");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "🔍 Analyse Resumes";

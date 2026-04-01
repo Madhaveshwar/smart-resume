@@ -1,8 +1,3 @@
-// ✅ Backend URL (ADD THIS)
-window.API_BASE = "https://smart-resume-8cg6.onrender.com";
-
-// ── Upload Page Logic ─────────────────────────────────────────────
-
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("✅ Upload JS Loaded");
 
@@ -14,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ── Load Job Titles ─────────────────────────
   try {
-    const res = await fetch(window.API_BASE + "/api/job-titles");
+    const res = await fetch(`${window.API_BASE}/api/job-titles`);
 
     if (!res.ok) throw new Error("API error");
 
@@ -92,8 +87,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      console.log("📂 Files:", fileInput.files);
-
       submitBtn.disabled = true;
       submitBtn.innerHTML = "Analysing...";
 
@@ -114,7 +107,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
 
       try {
-        const res = await fetch(window.API_BASE + "/api/process", {
+        const res = await fetch(`${window.API_BASE}/api/process`, {
           method: "POST",
           body: formData
         });
@@ -137,7 +130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// ── Results UI ─────────────────────────────────────────────────────
+// ── Results UI ─────────────────────────────────────────
 
 function showResults(data) {
   document.getElementById("heroSection")?.classList.add("hidden");
@@ -156,7 +149,7 @@ function showResults(data) {
     renderResumeCards(data.resumes, "results");
 }
 
-// ── Reset UI ───────────────────────────────────────────────────────
+// ── Reset UI ─────────────────────────────────────────
 
 function showUploadForm() {
   document.getElementById("heroSection")?.classList.remove("hidden");

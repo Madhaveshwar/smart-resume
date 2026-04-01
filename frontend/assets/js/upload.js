@@ -92,11 +92,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const formData = new FormData();
 
-      // ✅ FIX: only send ONE file (backend expects single file)
       const file = fileInput.files[0];
       formData.append("file", file);
 
-      // ✅ FIX: correct names
       formData.append(
         "jobTitle",
         document.getElementById("jobTitleSelect")?.value || ""
@@ -108,7 +106,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
 
       try {
-        // ✅ FIX: correct endpoint
         const res = await fetch(`${window.API_BASE}/api/upload`, {
           method: "POST",
           body: formData
@@ -119,7 +116,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await res.json();
         console.log("✅ Response:", data);
 
-        alert("✅ Upload successful!");
+        // ✅ SHOW RESULT UI (FIXED)
+        showResults({
+          jobTitle: data.jobTitle,
+          totalResumes: 1,
+          resumes: [
+            {
+              name: "Uploaded Resume",
+              score: "N/A",
+              skills: [],
+              suggestions: ["Analysis not implemented yet"]
+            }
+          ]
+        });
 
       } catch (e) {
         console.error("❌ Upload error:", e);
@@ -145,9 +154,15 @@ function showResults(data) {
     jobTitle ? `— ${jobTitle}` : "";
 
   document.getElementById("resultSubtitle").textContent =
-    `Upload successful`;
+    `${data.totalResumes} resume(s) processed`;
 
-  document.getElementById("resumeCards").innerHTML = "";
+  document.getElementById("resumeCards").innerHTML = `
+    <div style="padding:20px; color:white;">
+      <h3>Uploaded Resume</h3>
+      <p>Status: Uploaded successfully ✅</p>
+      <p>⚠ Analysis feature not implemented</p>
+    </div>
+  `;
 }
 
 // ── Reset UI ─────────────────────────────────────────

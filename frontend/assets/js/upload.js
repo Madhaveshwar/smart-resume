@@ -48,16 +48,48 @@ async function loadJobTitles() {
 }
 
 // ── MAIN LOAD ─────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
-  console.log("✅ DOM loaded");
+async function initUpload() {
+  console.log("✅ Initialization started");
 
   await loadJobTitles();
 
   const fileInput = document.getElementById("fileInput");
-  const submitBtn = document.getElementById("submitBtn");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const dropzone = document.getElementById("dropzone");
+  const fileCount = document.getElementById("fileCount");
 
-  if (submitBtn && fileInput) {
-    submitBtn.addEventListener("click", async () => {
+  if (fileInput && dropzone && fileCount) {
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        fileCount.textContent = fileInput.files[0].name;
+      } else {
+        fileCount.textContent = "No files selected";
+      }
+    });
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("border-blue-500", "bg-gray-800");
+    });
+
+    dropzone.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("border-blue-500", "bg-gray-800");
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("border-blue-500", "bg-gray-800");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event("change"));
+      }
+    });
+  }
+
+  if (analyzeBtn && fileInput) {
+    console.log("✅ Analysis button safely bound!");
+    analyzeBtn.addEventListener("click", async () => {
 
       if (!fileInput.files || fileInput.files.length === 0) {
         alert("Please select a file.");
@@ -68,8 +100,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       console.log("📂 Selected file:", file);
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = "Analysing...";
+      analyzeBtn.disabled = true;
+      analyzeBtn.innerHTML = "Analysing...";
 
       const formData = new FormData();
 
@@ -109,12 +141,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("❌ Upload error:", e);
         alert("Upload failed. Check console.");
       } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = "🔍 Analyse Resumes";
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = "🔍 Analyse Resumes";
       }
     });
+  } else {
+    console.error("❌ Missing attach items. analyzeBtn:", !!analyzeBtn, "fileInput:", !!fileInput);
   }
-});
+}
+
+// Safely execute when DOM is actually ready, supporting deferred loading naturally
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUpload);
+} else {
+  initUpload();
+}
 
 
 // ── RESULTS UI ─────────────────────────

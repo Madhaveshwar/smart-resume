@@ -2,6 +2,7 @@ package com.smartresume.controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
 
 import java.util.*;
 
@@ -22,54 +23,38 @@ public class ResumeController {
     }
 
     @PostMapping("/upload")
-    public Map<String, Object> uploadResume(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "jobTitle", required = false, defaultValue = "") String jobTitle,
-            @RequestParam(value = "jobDescription", required = false, defaultValue = "") String jobDescription) {
+    public ResponseEntity<Map<String, Object>> upload(
+        @RequestParam("files") MultipartFile[] files,
+        @RequestParam(value = "jobTitle", required = false, defaultValue = "") String jobTitle
+    ) {
 
-        // 1. Temporary simulated extracted text
-        String resumeText = "java spring sql react";
+        List<Map<String, Object>> results = new ArrayList<>();
 
-        // 2. Define expected skills
-        List<String> skills = Arrays.asList(
-                "java", "python", "sql", "spring", "react", "html", "css");
+        for (MultipartFile file : files) {
 
-        // 3. Compare extracted text against skills
-        List<String> matched = new ArrayList<>();
-        List<String> missing = new ArrayList<>();
+            if (file.isEmpty()) continue;
 
-        for (String skill : skills) {
-            if (resumeText.contains(skill.toLowerCase())) {
-                matched.add(skill);
-            } else {
-                missing.add(skill);
-            }
+            String name = file.getOriginalFilename();
+
+            List<String> matched = Arrays.asList("java", "sql");
+            List<String> missing = Arrays.asList("react");
+
+            int score = (matched.size() * 100) / (matched.size() + missing.size());
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("name", name);
+            result.put("score", score);
+            result.put("matchedSkills", matched);
+            result.put("missingSkills", missing);
+            result.put("suggestions", missing);
+
+            results.add(result);
         }
-
-        // 4. Calculate score percentage
-        int score = (matched.size() * 100) / skills.size();
-
-        // 5. Build proper response for the UI card
-        Map<String, Object> result = new HashMap<>();
-        String fileName = file.getOriginalFilename();
-        result.put("name", fileName != null && !fileName.isEmpty() ? fileName : "Candidate");
-        result.put("score", score);
-        result.put("matchedSkills", matched);
-        result.put("missingSkills", missing);
-
-        // Personalised AI Improvement Suggestions
-        List<String> suggestions = new ArrayList<>();
-        for (String m : missing) {
-            suggestions.add("Add " + m.toUpperCase() + " projects or keywords to improve your match.");
-        }
-        result.put("suggestions", suggestions);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "File analyzed successfully ✅");
-        response.put("jobTitle", jobTitle != null && !jobTitle.isEmpty() ? jobTitle : "General Application");
-        response.put("totalResumes", 1);
-        response.put("resumes", Collections.singletonList(result));
-
-        return response;
+        response.put("resumes", results);
+        response.put("totalResumes", results.size());
+        response.put("jobTitle", jobTitle);
+        return org.springframework.http.ResponseEntity.ok(response);
     }
 }

@@ -23,10 +23,15 @@ public class ResumeController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, Object>> upload(
+    public ResponseEntity<?> upload(
         @RequestParam("files") MultipartFile[] files,
-        @RequestParam(value = "jobTitle", required = false, defaultValue = "") String jobTitle
+        @RequestParam(value = "jobTitle", required = false) String jobTitle,
+        @RequestParam(value = "jobDescription", required = false) String jobDescription
     ) {
+
+        if (files == null || files.length == 0) {
+            return ResponseEntity.badRequest().body("No files received");
+        }
 
         List<Map<String, Object>> results = new ArrayList<>();
 

@@ -1,6 +1,4 @@
 services:
-  - type: web
+  - type: static
     name: smart-resume
-    env: java
-    buildCommand: mvn clean install
-    startCommand: java -jar target/*.jar
+    staticPublishPath: ./frontend

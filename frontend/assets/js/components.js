@@ -1,125 +1,180 @@
-// ── Shared UI components used across all pages ────────────────────
+// Shared UI components used across all pages
 
-/**
- * Render a list of resume objects into an HTML string of cards.
- * Mirrors the Thymeleaf #resumeCards fragment exactly.
- */
-function renderResumeCards(resumes, mode) {
-  if (!resumes || resumes.length === 0) {
-    return `<p class="text-center text-gray-500 mt-10">
-      No resumes found. ${mode === 'dashboard' ? 'Go to Upload to add some.' : 'Upload some first, or try a different keyword.'}
-    </p>`;
+function asList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'string') {
+    const splitter = value.includes('||') ? '||' : ',';
+    return value.split(splitter).map(s => s.trim()).filter(Boolean);
   }
-
-  return resumes.map((r, i) => {
-    const pct   = r.matchPercentage || 0;
-    const glow  = pct >= 75 ? 'card-glow-green' : (pct >= 40 ? 'card-glow-yellow' : 'card-glow-red');
-    const badge = pct >= 75
-      ? 'bg-green-900 text-green-300 border-green-700'
-      : (pct >= 40 ? 'bg-yellow-900 text-yellow-300 border-yellow-700' : 'bg-red-900 text-red-300 border-red-700');
-    const avatarBg = pct >= 75 ? 'bg-green-700' : (pct >= 40 ? 'bg-yellow-600' : 'bg-red-700');
-    const barColor = pct >= 75 ? 'bg-green-500' : (pct >= 40 ? 'bg-yellow-400' : 'bg-red-500');
-    const statusText = pct >= 75
-      ? '✅ Strong match — ready to shortlist'
-      : (pct >= 40 ? '🟡 Moderate match — worth reviewing' : '🔴 Low match — see suggestions below');
-    const statusColor = pct >= 75 ? 'text-green-600' : (pct >= 40 ? 'text-yellow-600' : 'text-red-600');
-
-    const matchedSkillsHtml = (r.matchedSkills || []).length
-      ? `<div class="mb-3">
-          <p class="section-label text-green-500">✅ Matched Skills (${r.matchedSkills.length})</p>
-          <div class="flex flex-wrap">${r.matchedSkills.map(s => `<span class="skill-chip chip-matched">${s}</span>`).join('')}</div>
-         </div>` : '';
-
-    const missingSkillsHtml = (r.missingSkills || []).length
-      ? `<div class="mb-3">
-          <p class="section-label text-red-400">❌ Missing Skills (${r.missingSkills.length})</p>
-          <div class="flex flex-wrap">${r.missingSkills.map(s => `<span class="skill-chip chip-missing">${s}</span>`).join('')}</div>
-         </div>` : '';
-
-    const detectedSkillsHtml = (!(r.matchedSkills || []).length && (r.detectedSkills || []).length)
-      ? `<div class="mb-3">
-          <p class="section-label text-blue-400">🔎 Detected Skills</p>
-          <div class="flex flex-wrap">${r.detectedSkills.map(s => `<span class="skill-chip chip-detected">${s}</span>`).join('')}</div>
-         </div>` : '';
-
-    const suggestionsHtml = (r.suggestions || []).length
-      ? `<div class="mt-4 bg-gray-800 border border-yellow-900/50 rounded-xl p-4">
-          <p class="section-label text-yellow-400 mb-3">💡 How to Improve Your Resume for This Role</p>
-          ${r.suggestions.map(s => `<div class="suggestion-item"><span>${s}</span></div>`).join('')}
-         </div>` : '';
-
-    const recommendedHtml = (r.recommendedRoles || []).length
-      ? `<div class="mt-4 bg-gray-800 border border-purple-900/50 rounded-xl p-4">
-          <p class="section-label text-purple-400 mb-2">🎯 Better Matching Roles for This Candidate</p>
-          <div class="flex flex-wrap">${r.recommendedRoles.map(s => `<span class="skill-chip chip-role">${s}</span>`).join('')}</div>
-         </div>` : '';
-
-    const suggestedJobsHtml = (!(r.recommendedRoles || []).length && (r.suggestedJobs || []).length)
-      ? `<div class="mt-3 bg-gray-800 border border-yellow-900/40 rounded-xl p-3">
-          <p class="section-label text-yellow-400 mb-2">💼 Suggested Roles</p>
-          <div class="flex flex-wrap">${r.suggestedJobs.map(s => `<span class="skill-chip chip-role">${s}</span>`).join('')}</div>
-         </div>` : '';
-
-    const uploadedAtHtml = (mode === 'dashboard' && r.uploadedAt)
-      ? `<p class="text-xs text-gray-600 mt-4 border-t border-gray-800 pt-3">Uploaded: ${formatDate(r.uploadedAt)}</p>`
-      : '';
-
-    return `
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg hover:border-gray-600 transition-all ${glow}">
-      <div class="flex items-start gap-4 mb-4">
-        <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${avatarBg}">${i + 1}</div>
-        <div class="flex-1 min-w-0">
-          <h3 class="text-lg font-bold truncate">${r.name || 'Unknown'}</h3>
-          <p class="text-xs text-gray-500">${r.fileName || ''}</p>
-        </div>
-        <div class="border rounded-xl px-3 py-1 text-sm font-bold whitespace-nowrap flex-shrink-0 ${badge}">${pct}% Match</div>
-      </div>
-      <div class="progress-bar-wrap mb-1">
-        <div class="progress-bar-fill ${barColor}" style="width: ${pct}%"></div>
-      </div>
-      <p class="text-xs mb-4 ${statusColor}">${statusText}</p>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm text-gray-300 mb-5">
-        <div class="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-          <span class="truncate text-xs">${r.email || 'N/A'}</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-          </svg>
-          <span class="text-xs">${r.phone || 'N/A'}</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-          <span class="text-xs">${r.experience || 'N/A'}</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
-          <span class="text-xs text-gray-400">ATS Score: ${r.score || 0}</span>
-        </div>
-      </div>
-      ${matchedSkillsHtml}
-      ${missingSkillsHtml}
-      ${detectedSkillsHtml}
-      ${suggestionsHtml}
-      ${recommendedHtml}
-      ${suggestedJobsHtml}
-      ${uploadedAtHtml}
-    </div>`;
-  }).join('');
+  return [];
 }
 
-function formatDate(isoStr) {
-  try {
-    const d = new Date(isoStr);
-    return d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  } catch { return isoStr; }
+function scoreColor(score) {
+  if (score > 80) return { text: 'text-green-400', chip: 'bg-green-950/50 border-green-800 text-green-300', bar: 'bg-green-500' };
+  if (score >= 60) return { text: 'text-yellow-400', chip: 'bg-yellow-950/50 border-yellow-800 text-yellow-300', bar: 'bg-yellow-500' };
+  return { text: 'text-red-400', chip: 'bg-red-950/50 border-red-800 text-red-300', bar: 'bg-red-500' };
+}
+
+function deriveWhyScore(r) {
+  if (Array.isArray(r.whyScore)) return r.whyScore;
+  if (typeof r.whyScore === 'string' && r.whyScore.trim()) return asList(r.whyScore);
+
+  const matched = asList(r.matchedSkills);
+  const missing = asList(r.missingSkills);
+  const requiredCount = matched.length + missing.length;
+  const reasons = [];
+
+  if (requiredCount > 0) {
+    reasons.push(`Candidate matches ${matched.length} out of ${requiredCount} required skills.`);
+  }
+  if (missing.length > 0) {
+    reasons.push(`Missing critical skills: ${missing.slice(0, 3).join(', ')}.`);
+  }
+  reasons.push((r.experienceMatch || 0) < 60
+    ? 'Experience alignment is currently low for this role.'
+    : 'Experience alignment is acceptable for this role.');
+  return reasons;
+}
+
+function deriveProfileSummary(r) {
+  if (r.profileSummary) return r.profileSummary;
+  const matched = asList(r.matchedSkills);
+  const missing = asList(r.missingSkills);
+  const strong = matched.length ? matched.slice(0, 3).join(', ') : 'general foundational skills';
+  const gap = missing.length ? missing.slice(0, 3).join(', ') : 'no major role-specific gaps';
+  return `Candidate shows strength in ${strong} but has gaps in ${gap}.`;
+}
+
+function deriveImpact(r, score) {
+  if (r.hiringImpact) return r.hiringImpact;
+  if (score > 80) return 'Good fit for immediate interview and shortlisting.';
+  if (score >= 60) return 'Can be considered for junior role after focused improvements.';
+  return 'Not suitable for immediate hiring; consider internship track after upskilling.';
+}
+
+function deriveDecision(r, score) {
+  if (r.hiringDecision) return r.hiringDecision;
+  if (score > 80) return 'Strong Candidate';
+  if (score > 60) return 'Moderate Fit';
+  return 'Needs Improvement';
+}
+
+function derivePlan(r) {
+  if (Array.isArray(r.improvementPlan)) return r.improvementPlan;
+  if (typeof r.improvementPlan === 'string' && r.improvementPlan.trim()) return asList(r.improvementPlan);
+
+  if (r.suggestions) return asList(r.suggestions);
+
+  const missing = asList(r.missingSkills);
+  return missing.slice(0, 4).map(skill => `${skill} -> Required for this role -> Build 2 projects using ${skill}`);
+}
+
+function deriveRecruiterNote(r) {
+  if (r.recruiterNote) return r.recruiterNote;
+  const missing = asList(r.missingSkills);
+  return `Candidate requires improvement in ${missing.length} key areas before being considered for this role.`;
+}
+
+function deriveOneLineSummary(r, score) {
+  if (r.oneLineSummary) return r.oneLineSummary;
+  if (score > 80) return 'Highly recommended candidate.';
+  if (score > 60) return 'Potential candidate with improvements needed.';
+  return 'Not suitable for current role.';
+}
+
+function renderResumeCards(resumesArray) {
+  if (!resumesArray || resumesArray.length === 0) {
+    return `<div class="text-center mt-10"><p class="text-gray-500">No resumes found matching this criteria.</p></div>`;
+  }
+
+  const resumes = [...resumesArray]
+    .map(r => ({ ...r, finalScore: parseInt(r.matchPercentage ?? r.score ?? 0, 10) || 0 }))
+    .sort((a, b) => b.finalScore - a.finalScore);
+
+  return resumes.map((r, idx) => {
+    const color = scoreColor(r.finalScore);
+    const matchedSkills = asList(r.matchedSkills);
+    const missingSkills = asList(r.missingSkills);
+    const whyScore = deriveWhyScore(r);
+    const improvement = derivePlan(r);
+    const decision = deriveDecision(r, r.finalScore);
+    const decisionBadge = r.finalScore > 80
+      ? 'background:#16a34a;color:white;padding:4px 10px;border-radius:6px;'
+      : (r.finalScore > 60
+        ? 'background:#f59e0b;color:white;padding:4px 10px;border-radius:6px;'
+        : 'background:#dc2626;color:white;padding:4px 10px;border-radius:6px;');
+
+    return `
+      <article class="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden ${idx === 0 ? 'ring-1 ring-yellow-500/40' : ''}">
+        ${idx === 0 ? '<div class="absolute top-0 right-0 px-4 py-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 text-xs font-black rounded-bl-2xl">Top Candidate</div>' : ''}
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-gray-800 pb-5 mb-5">
+          <div>
+            <p class="text-xs font-bold tracking-widest text-gray-400">Rank #${idx + 1}</p>
+            <h3 class="text-2xl font-black mt-1">${r.name || 'Candidate'}</h3>
+            <p class="text-xs text-gray-500 mt-1">${r.fileName || 'Unknown file'}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500 font-bold">MATCH %</p>
+            <p class="text-5xl font-black ${color.text}">${r.finalScore}<span class="text-xl text-gray-500">%</span></p>
+            <span style="${decisionBadge}">${decision}</span>
+          </div>
+        </div>
+
+        <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4 mb-5">
+          <p class="text-[0.7rem] uppercase tracking-widest text-blue-400 font-bold">Score Breakdown</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-xs">
+            <div>
+              <div class="flex justify-between text-gray-400 mb-1"><span>Skills Match</span><span>${r.skillsMatch || 0}%</span></div>
+              <div class="h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-blue-500" style="width:${r.skillsMatch || 0}%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-gray-400 mb-1"><span>Keyword Match</span><span>${r.keywordMatch || 0}%</span></div>
+              <div class="h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-cyan-500" style="width:${r.keywordMatch || 0}%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-gray-400 mb-1"><span>Experience Match</span><span>${r.experienceMatch || 0}%</span></div>
+              <div class="h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-purple-500" style="width:${r.experienceMatch || 0}%"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4">
+            <p class="text-[0.7rem] uppercase tracking-widest text-sky-400 font-bold">Why This Score?</p>
+            <ul class="mt-2 space-y-1 text-sm text-gray-300">${whyScore.map(w => `<li>${w}</li>`).join('')}</ul>
+          </section>
+
+          <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4">
+            <p class="text-[0.7rem] uppercase tracking-widest text-emerald-400 font-bold">Profile Summary</p>
+            <p class="mt-2 text-sm text-gray-300">${deriveProfileSummary(r)}</p>
+            <p class="mt-3 text-xs text-cyan-300"><b>Quick Decision:</b> ${deriveOneLineSummary(r, r.finalScore)}</p>
+          </section>
+
+          <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4">
+            <p class="text-[0.7rem] uppercase tracking-widest text-green-400 font-bold">Strengths</p>
+            <div class="mt-2 flex flex-wrap gap-1.5">${matchedSkills.map(s => `<span class="px-2 py-1 rounded-full text-xs bg-green-950/50 border border-green-800 text-green-300">${s}</span>`).join('') || '<span class="text-xs text-gray-500">No direct strengths detected.</span>'}</div>
+          </section>
+
+          <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4">
+            <p class="text-[0.7rem] uppercase tracking-widest text-red-400 font-bold">Missing Skills</p>
+            <div class="mt-2 flex flex-wrap gap-1.5">${missingSkills.map(s => `<span class="px-2 py-1 rounded-full text-xs bg-red-950/50 border border-red-800 text-red-300">${s}</span>`).join('') || '<span class="text-xs text-gray-500">No missing skills detected.</span>'}</div>
+          </section>
+
+          <section class="bg-gray-950 border border-gray-800 rounded-2xl p-4 md:col-span-2">
+            <p class="text-[0.7rem] uppercase tracking-widest text-yellow-400 font-bold">Improvement Plan</p>
+            <div class="mt-2 space-y-1 text-sm text-gray-300">${improvement.map(i => `<p>${i}</p>`).join('') || '<p class="text-xs text-gray-500">No improvement plan needed.</p>'}</div>
+          </section>
+
+          <section class="rounded-2xl p-4 border md:col-span-2 ${color.chip}">
+            <p class="text-[0.7rem] uppercase tracking-widest font-bold">Impact On Hiring</p>
+            <p class="mt-2 text-sm">${deriveImpact(r, r.finalScore)}</p>
+            <p class="mt-3 text-xs"><b>Recruiter Note:</b> ${deriveRecruiterNote(r)}</p>
+          </section>
+        </div>
+      </article>`;
+  }).join('');
 }
 
 function setActiveNav(page) {

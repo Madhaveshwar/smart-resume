@@ -1,2 +1,5 @@
 backend/target/
 node_modules/
+backend/data/
+*.mv.db
+*.trace.db

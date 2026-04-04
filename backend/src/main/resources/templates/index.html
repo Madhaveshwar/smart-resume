@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Smart ATS — Professional Resume Analysis System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" th:href="@{/static/css/style.css}"/>
+    <style>
+        .skill-chip        { display:inline-block; padding:3px 12px; border-radius:9999px; font-size:0.75rem; font-weight:600; margin:3px; transition: all 0.2s; }
+        .chip-matched      { background:rgba(22, 163, 74, 0.1); color:#4ade80; border:1px solid rgba(74, 222, 128, 0.2); }
+        .chip-missing      { background:rgba(220, 38, 38, 0.1); color:#f87171; border:1px solid rgba(248, 113, 113, 0.2); }
+        .chip-detected     { background:rgba(59, 130, 246, 0.1); color:#93c5fd; border:1px solid rgba(147, 197, 253, 0.2); }
+        .chip-role         { background:rgba(139, 92, 246, 0.1); color:#c4b5fd; border:1px solid rgba(196, 181, 253, 0.2); }
+        .chip-cat          { background:rgba(16, 185, 129, 0.1); color:#6ee7b7; border:1px solid rgba(110, 231, 183, 0.2); }
+        .suggestion-item   { background:rgba(245, 158, 11, 0.05); border-left:3px solid #f59e0b; padding:10px 14px; margin:6px 0; border-radius:0 8px 8px 0; font-size:0.85rem; color:#fcd34d; line-height: 1.5; }
+        .progress-bar-wrap { background:#374151; border-radius:9999px; height:8px; overflow:hidden; }
+        .progress-bar-fill { height:8px; border-radius:9999px; transition:width 0.6s ease; }
+        .card-glow-green   { box-shadow:0 0 0 1px rgba(22, 163, 74, 0.3), 0 10px 15px -3px rgba(22, 163, 74, 0.1); border-color: rgba(22, 163, 74, 0.2); }
+        .card-glow-yellow  { box-shadow:0 0 0 1px rgba(202, 138, 4, 0.3), 0 10px 15px -3px rgba(202, 138, 4, 0.1); border-color: rgba(202, 138, 4, 0.2); }
+        .card-glow-red     { box-shadow:0 0 0 1px rgba(220, 38, 38, 0.3), 0 10px 15px -3px rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.2); }
+        .section-label     { font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; display: flex; align-items: center; gap: 6px; }
+        .stat-card         { background:#111827; border:1px solid #1f2937; border-radius:1rem; padding:1.25rem 1.5rem; }
+        .exp-badge         { display:inline-flex; align-items:center; gap:4px; background:#0f172a; border:1px solid #334155; border-radius:6px; padding:3px 10px; font-size:0.75rem; color:#94a3b8; }
+        select optgroup    { background:#1f2937; color:#9ca3af; font-weight:700; font-size:0.7rem; }
+        select option      { background:#111827; color:#f9fafb; font-size: 0.9rem; }
+        .chart-container   { position:relative; height:260px; }
+        .big-score         { font-size: 3rem; font-weight: 900; line-height: 1; margin-right: 1rem; }
+    </style>
+</head>
+<body class="bg-gray-950 min-h-screen text-white font-sans">
+
+<!-- ===== HEADER ===== -->
+<header class="border-b border-gray-800 px-8 py-4 flex items-center justify-between sticky top-0 z-10 bg-gray-950/95 backdrop-blur">
+    <div class="flex items-center gap-3">
+        <svg class="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <span class="text-2xl font-black tracking-tight">Smart<span class="text-blue-500">ATS</span> <span class="text-sm text-gray-500 font-medium ml-2">PRO</span></span>
+    </div>
+    <nav class="flex gap-2">
+        <a href="/" th:classappend="${mode == 'upload' or mode == 'results'} ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white bg-gray-900 border border-gray-800'"
+           class="px-5 py-2 rounded-xl text-sm font-semibold transition-colors">Upload</a>
+        <a href="/search" th:classappend="${mode == 'search'} ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white bg-gray-900 border border-gray-800'"
+           class="px-5 py-2 rounded-xl text-sm font-semibold transition-colors">Search</a>
+        <a href="/dashboard" th:classappend="${mode == 'dashboard'} ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white bg-gray-900 border border-gray-800'"
+           class="px-5 py-2 rounded-xl text-sm font-semibold transition-colors">Dashboard</a>
+    </nav>
+</header>
+
+<!-- ===== UPLOAD TAB ===== -->
+<div th:if="${mode == 'upload' or mode == 'results'}">
+    <section class="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center" th:if="${mode == 'upload'}">
+        <div class="inline-flex items-center gap-2 bg-blue-900/30 text-blue-300 text-xs px-4 py-2 rounded-full border border-blue-800/50 mb-6 font-semibold tracking-wide uppercase">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            Professional ATS Analysis Engine
+        </div>
+        <h1 class="text-5xl font-black mb-4 tracking-tight">Smart Resume Filtering</h1>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">Upload resumes to instantly get a detailed ATS score breakdown, matched strengths, and actionable improvement recommendations.</p>
+    </section>
+
+    <section class="max-w-5xl mx-auto px-6 mb-12" th:if="${mode == 'upload'}">
+        <div class="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 sm:p-10 shadow-2xl">
+            <form id="uploadForm" th:action="@{/upload}" method="post" enctype="multipart/form-data" class="flex flex-col gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">Target Job Role</label>
+                        <select name="job_title" required
+                                class="w-full bg-gray-950 border border-gray-700 text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium appearance-none">
+                            <option value="">-- Select Target Role --</option>
+                            <optgroup label="── Software Development ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Full Stack Developer' or title == 'Backend Developer' or title == 'Frontend Developer' or title == 'Web Developer' or title == 'Software Engineer' or title == '.NET Developer' or title == 'Node.js Developer' or title == 'Python Developer' or title == 'Java Developer' or title == 'PHP Developer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Data &amp; AI ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Data Scientist' or title == 'Data Analyst' or title == 'Machine Learning Engineer' or title == 'AI Engineer' or title == 'Data Engineer' or title == 'Business Intelligence Developer' or title == 'NLP Engineer' or title == 'Computer Vision Engineer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Cloud &amp; DevOps ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'DevOps Engineer' or title == 'Cloud Engineer' or title == 'Site Reliability Engineer' or title == 'Cloud Architect' or title == 'Platform Engineer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Security ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Cybersecurity Analyst' or title == 'Security Engineer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Mobile ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Mobile App Developer' or title == 'Android Developer' or title == 'iOS Developer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Design ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'UI/UX Designer' or title == 'Product Designer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── QA / Testing ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'QA Engineer' or title == 'Automation Test Engineer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── IT / Infrastructure ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'System Administrator' or title == 'Database Administrator' or title == 'IT Support Engineer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Business / Product ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Business Analyst' or title == 'Project Manager' or title == 'Product Manager' or title == 'Scrum Master'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                            <optgroup label="── Embedded / Blockchain / Game ──">
+                                <option th:each="title : ${jobTitles}" th:if="${title == 'Embedded Systems Engineer' or title == 'Blockchain Developer' or title == 'Game Developer'}"
+                                        th:value="${title}" th:text="${title}"></option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">Candidate Resumes</label>
+                        <div class="border-2 border-dashed border-gray-700 bg-gray-950 rounded-2xl p-6 text-center hover:border-blue-500 hover:bg-blue-900/10 transition-all group cursor-pointer relative" id="dropzone">
+                            <input type="file" name="pdf_docs" accept=".pdf,.docx,.doc,.txt" multiple id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required/>
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <div class="w-12 h-12 rounded-full bg-gray-800 group-hover:bg-blue-600 flex items-center justify-center transition-colors">
+                                    <svg class="w-6 h-6 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="text-white font-semibold">Drop PDF/DOCX files</span>
+                                    <span class="block text-xs text-gray-500 mt-1" id="fileCount">Drag and drop or click to browse</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
+                        Specific Job Description <span class="text-gray-500 font-normal lowercase tracking-normal">(optional for deeper analysis)</span>
+                    </label>
+                    <textarea name="job_desc" rows="4" placeholder="Paste the job description (JD) to map precise keywords and get semantic scoring..."
+                              class="w-full bg-gray-950 border border-gray-700 text-white rounded-2xl px-5 py-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-600"></textarea>
+                </div>
+                <button type="submit"
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all text-white font-black py-4 rounded-2xl text-lg shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Run ATS Analysis
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Results Header -->
+    <section class="max-w-5xl mx-auto px-6 pb-6" th:if="${mode == 'results' and resumes != null and !#lists.isEmpty(resumes)}">
+        <div class="flex items-end justify-between border-b border-gray-800 pb-4">
+            <div>
+                <h2 class="text-3xl font-black">
+                    Analysis Report
+                </h2>
+                <h2 class="text-lg font-semibold text-gray-200 mt-2">Total Resumes: <span th:text="${resumes.size()}">0</span></h2>
+                <p class="text-gray-400 text-sm mt-2 flex items-center gap-2">
+                    <span class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                    Analyzed against <strong class="text-white" th:text="${jobTitle}">Job Role</strong>
+                    <span class="text-gray-600 px-1">|</span>
+                    <span th:text="${totalProcessed} + ' candidate(s)'"></span>
+                </p>
+            </div>
+            <a href="/" class="text-sm font-semibold text-white bg-gray-800 hover:bg-gray-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm">
+                + New Scan
+            </a>
+        </div>
+    </section>
+
+    <section class="max-w-5xl mx-auto px-6 pb-20" th:if="${mode == 'results' and resumes != null and !#lists.isEmpty(resumes)}">
+        <div th:replace="~{:: #resumeCards}"></div>
+    </section>
+    <section class="max-w-5xl mx-auto px-6 pb-20 text-center"
+             th:if="${mode == 'results' and (resumes == null or #lists.isEmpty(resumes))}">
+        <div class="bg-gray-900 border border-gray-800 rounded-3xl p-12 max-w-2xl mx-auto">
+            <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <h3 class="text-xl font-bold mb-2">No Candidates Parsed</h3>
+            <p class="text-gray-500">We couldn't extract data from the uploaded files. Ensure they are standard text-based PDFs or DOCX formats.</p>
+            <a href="/" class="inline-block mt-6 px-6 py-2 bg-gray-800 text-white font-medium rounded-xl hover:bg-gray-700">Try Again</a>
+        </div>
+    </section>
+</div>
+
+<!-- ===== SEARCH TAB ===== -->
+<div th:if="${mode == 'search'}">
+    <section class="max-w-5xl mx-auto px-6 pt-10 pb-6">
+        <h2 class="text-2xl font-bold mb-6">Search Stored Resumes</h2>
+        <form th:action="@{/search}" method="get" class="flex gap-3">
+            <input type="text" name="keyword" th:value="${keyword}"
+                   placeholder="e.g. Spring Boot, React, Machine Learning, Python..."
+                   class="flex-1 bg-gray-800 border border-gray-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"/>
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+                Search
+            </button>
+        </form>
+        <p class="text-gray-500 text-sm mt-3"
+           th:if="${keyword != null and !#strings.isEmpty(keyword)}"
+           th:text="'Showing results for: ' + ${keyword} + '  (' + #lists.size(resumes) + ' found)'"></p>
+    </section>
+    <section class="max-w-5xl mx-auto px-6 pb-20">
+        <div th:replace="~{:: #resumeCards}"></div>
+        <p class="text-center text-gray-500 mt-10"
+           th:if="${resumes == null or #lists.isEmpty(resumes)}">
+            No resumes found. Upload some first, or try a different keyword.
+        </p>
+    </section>
+</div>
+
+<!-- ===== DASHBOARD TAB ===== -->
+<div th:if="${mode == 'dashboard'}">
+    <section class="max-w-6xl mx-auto px-6 pt-10 pb-6">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="text-2xl font-bold">📊 Analytics Dashboard</h2>
+                <p class="text-gray-500 text-sm mt-1"
+                   th:text="${totalStored} + ' resume(s) stored in database'"></p>
+            </div>
+            <form th:action="@{/clear}" method="post"
+                  onsubmit="return confirm('Delete ALL resumes from the database?')">
+                <button type="submit"
+                        class="bg-red-800 hover:bg-red-700 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
+                    Clear All
+                </button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8" th:if="${resumes != null and !#lists.isEmpty(resumes)}">
+            <div class="stat-card text-center">
+                <div class="text-3xl font-extrabold text-blue-400" th:text="${totalStored}">0</div>
+                <div class="text-xs text-gray-500 mt-1">Total Resumes</div>
+            </div>
+            <div class="stat-card text-center">
+                <div class="text-3xl font-extrabold text-green-400" id="avgMatch">—</div>
+                <div class="text-xs text-gray-500 mt-1">Avg Match %</div>
+            </div>
+            <div class="stat-card text-center">
+                <div class="text-3xl font-extrabold text-yellow-400" id="topMatch">—</div>
+                <div class="text-xs text-gray-500 mt-1">Top Match %</div>
+            </div>
+            <div class="stat-card text-center">
+                <div class="text-3xl font-extrabold text-purple-400" id="shortlistCount">—</div>
+                <div class="text-xs text-gray-500 mt-1">Shortlisted (≥75%)</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8" th:if="${resumes != null and !#lists.isEmpty(resumes)}">
+            <div class="stat-card">
+                <p class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Match Distribution</p>
+                <div class="chart-container"><canvas id="matchChart"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <p class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Experience Levels</p>
+                <div class="chart-container"><canvas id="expChart"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <p class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Top Skills</p>
+                <div class="chart-container"><canvas id="skillChart"></canvas></div>
+            </div>
+        </div>
+
+        <div id="dashData" class="hidden"
+             th:data-match-pcts="${resumes != null ? #strings.listJoin(resumes.![matchPercentage], ',') : ''}"
+             th:data-experiences="${resumes != null ? #strings.listJoin(resumes.![experience], '|') : ''}"
+             th:data-skills="${resumes != null ? #strings.listJoin(resumes.![skills], '||') : ''}">
+        </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-6 pb-6">
+        <h3 class="text-lg font-bold mb-4 text-gray-300">All Candidates</h3>
+        <div th:replace="~{:: #resumeCards}"></div>
+        <p class="text-center text-gray-500 mt-10"
+           th:if="${resumes == null or #lists.isEmpty(resumes)}">
+            No resumes in the database yet. Go to Upload to add some.
+        </p>
+    </section>
+</div>
+
+<!-- ===== SHARED RESUME CARDS FRAGMENT ===== -->
+<!-- Improve resume card UI to look like a professional ATS system -->
+
+<!-- Requirements:
+1. Show Match Percentage with color:
+    green (>80), yellow (60-80), red (<60)
+
+2. Show Score Breakdown:
+    - Skills Match %
+    - Keyword Match %
+    - Experience Match %
+
+3. Add "Why this score" section
+
+4. Add "Profile Summary"
+
+5. Show:
+    - Matched Skills (green tags)
+    - Missing Skills (red tags)
+
+6. Add "Improvement Plan" section with bullet points
+
+7. Show Hiring Decision badge
+
+8. Show Rank number and highlight Top Candidate
+
+9. Ensure only ONE loop:
+    th:each="resume, stat : ${resumes}"
+
+10. Do NOT duplicate rendering
+-->
+<!-- Fix duplicate resume rendering -->
+<!-- Ensure only one th:each loop is used -->
+<!-- Remove any repeated loops causing duplicate cards -->
+<div id="resumeCards" th:if="${resumes != null and !#lists.isEmpty(resumes)}" class="flex flex-col gap-8">
+
+    <div th:each="resume, iterStat : ${resumes}"
+         th:classappend="${resume.matchPercentage > 80} ? 'card-glow-green' :
+                          (${resume.matchPercentage >= 60} ? 'card-glow-yellow' : 'card-glow-red')"
+            class="bg-gray-900/80 backdrop-blur border rounded-3xl p-8 transition-all hover:-translate-y-1 relative overflow-hidden"
+            th:style="${iterStat.index == 0} ? 'border:2px solid gold;padding:10px;border-radius:10px;' : ''">
+
+        <div th:if="${iterStat.first}" class="absolute right-0 top-0 bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 text-xs font-black px-4 py-2 rounded-bl-2xl">
+            Top Candidate
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 border-b border-gray-800 pb-6">
+            <div>
+                <p class="text-xs font-bold tracking-widest text-gray-400 mb-2" th:text="'Rank #' + ${iterStat.count}">Rank #1</p>
+                <h3 class="text-2xl font-black" th:text="${resume.name}">Candidate Name</h3>
+                <p class="text-sm text-gray-400 mt-1" th:text="${resume.fileName}">resume.pdf</p>
+                <div class="flex flex-wrap gap-2 mt-3 text-xs">
+                    <span class="px-3 py-1 rounded-lg bg-gray-950 border border-gray-800" th:text="${resume.email}">email</span>
+                    <span class="px-3 py-1 rounded-lg bg-gray-950 border border-gray-800" th:text="${resume.phone}">phone</span>
+                    <span class="px-3 py-1 rounded-lg bg-indigo-950/40 border border-indigo-900/40 text-indigo-300" th:text="${resume.experience}">Experience</span>
+                </div>
+            </div>
+
+            <div class="text-right">
+                <p class="text-xs font-bold tracking-widest text-gray-400">MATCH SCORE</p>
+                <div th:classappend="${resume.matchPercentage > 80} ? 'text-green-500' : (${resume.matchPercentage >= 60} ? 'text-yellow-500' : 'text-red-500')"
+                     class="big-score font-mono mt-1">
+                    <span th:text="${resume.matchPercentage}">0</span><span class="text-2xl text-gray-500 ml-1">%</span>
+                </div>
+                    <span th:text="${resume.hiringDecision}"
+                        th:style="${resume.matchPercentage > 80} ? 
+                        'background:#16a34a;color:white;padding:4px 10px;border-radius:6px;' :
+                        (${resume.matchPercentage > 60} ?
+                        'background:#f59e0b;color:white;padding:4px 10px;border-radius:6px;' :
+                        'background:#dc2626;color:white;padding:4px 10px;border-radius:6px;')">
+                    </span>
+            </div>
+        </div>
+
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5 mb-6">
+            <p class="section-label text-blue-400">Score Breakdown</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-gray-400">Skills Match</span>
+                        <span class="text-blue-400 font-bold" th:text="${resume.skillsMatch} + '%'">0%</span>
+                    </div>
+                    <div style="background:#ddd;height:8px;border-radius:5px;">
+                        <div th:style="'width:' + ${resume.skillsMatch} + '%;background:green;height:8px;border-radius:5px;'"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-gray-400">Keyword Match</span>
+                        <span class="text-cyan-400 font-bold" th:text="${resume.keywordMatch} + '%'">0%</span>
+                    </div>
+                    <div style="background:#ddd;height:8px;border-radius:5px;">
+                        <div th:style="'width:' + ${resume.keywordMatch} + '%;background:orange;height:8px;border-radius:5px;'"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-gray-400">Experience Match</span>
+                        <span class="text-purple-400 font-bold" th:text="${resume.experienceMatch} + '%'">0%</span>
+                    </div>
+                    <div style="background:#ddd;height:8px;border-radius:5px;">
+                        <div th:style="'width:' + ${resume.experienceMatch} + '%;background:red;height:8px;border-radius:5px;'"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-5">
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5">
+                    <p class="section-label text-sky-400">Why This Score?</p>
+                    <ul class="space-y-2 text-sm text-gray-300 mt-2">
+                        <li th:each="reason : ${resume.whyScoreList}" th:text="${reason}">Reason</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5">
+                    <p class="section-label text-emerald-400">Profile Summary</p>
+                    <p class="text-sm text-gray-300 mt-2 leading-relaxed" th:text="${resume.profileSummary}">Profile summary</p>
+                    <p class="text-xs text-cyan-300 mt-3"><b>One-line Summary:</b> <span th:text="${resume.oneLineSummary}">Summary</span></p>
+                </div>
+
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5">
+                    <p class="section-label text-green-500">Strengths</p>
+                    <div class="flex flex-wrap mt-2">
+                        <span th:each="skill : ${#strings.arraySplit(resume.matchedSkills, '||')}" class="skill-chip chip-matched" th:text="${skill}">Skill</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5">
+                    <p class="section-label text-red-500">Missing Skills</p>
+                    <div class="flex flex-wrap mt-2">
+                        <span th:each="skill : ${#strings.arraySplit(resume.missingSkills, '||')}" class="skill-chip chip-missing" th:text="${skill}">Skill</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <div class="p-5 rounded-2xl border"
+                     th:classappend="${resume.matchPercentage > 80} ? 'bg-green-950/40 border-green-900/50' : (${resume.matchPercentage >= 60} ? 'bg-yellow-950/40 border-yellow-900/50' : 'bg-red-950/40 border-red-900/50')">
+                    <p class="section-label" th:classappend="${resume.matchPercentage > 80} ? 'text-green-400' : (${resume.matchPercentage >= 60} ? 'text-yellow-400' : 'text-red-400')">Impact On Hiring</p>
+                    <p class="text-sm leading-relaxed" th:text="${resume.hiringImpact}">Hiring impact</p>
+                    <p class="text-xs text-gray-200 mt-3"><b>Recruiter Note:</b> <span th:text="${resume.recruiterNote}">Recruiter note</span></p>
+                </div>
+
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-5">
+                    <p class="section-label text-yellow-400">Improvement Plan</p>
+                    <ul class="space-y-2 mt-2">
+                        <li th:each="s : ${#strings.arraySplit(resume.suggestions, '||')}" class="suggestion-item">
+                            🚀 <span th:text="${s}"></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div th:if="${not #strings.isEmpty(resume.recommendedRoles)}" class="bg-indigo-950/20 border border-indigo-900/30 rounded-2xl p-5">
+                    <p class="section-label text-indigo-400">Alternative Role Match</p>
+                    <div class="flex flex-wrap mt-2">
+                        <span th:each="role : ${#strings.arraySplit(resume.recommendedRoles, '||')}" class="skill-chip chip-role" th:text="${role}">Role</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        const count = this.files.length;
+        const msg = count === 0 ? 'Drag and drop or click to browse' : 
+                    count === 1 ? this.files[0].name : `${count} resumes selected`;
+        document.getElementById('fileCount').textContent = msg;
+        
+        if (count > 0) {
+            document.getElementById('dropzone').classList.add('border-blue-500', 'bg-blue-900/10');
+        } else {
+            document.getElementById('dropzone').classList.remove('border-blue-500', 'bg-blue-900/10');
+        }
+    });
+}
+// ── Dashboard charts ─────────────────────────────────────────────────
+const dashEl = document.getElementById('dashData');
+if (dashEl) {
+    const matchPcts  = dashEl.dataset.matchPcts ? dashEl.dataset.matchPcts.split(',').map(Number) : [];
+    const experiences = dashEl.dataset.experiences ? dashEl.dataset.experiences.split('|') : [];
+    const allSkillsRaw = dashEl.dataset.skills ? dashEl.dataset.skills.split('||') : [];
+
+    if (matchPcts.length > 0) {
+        // ── Summary stats ──
+        const validPcts = matchPcts.filter(p => p > 0);
+        if (validPcts.length > 0) {
+            const avg = Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length);
+            const top = Math.max(...validPcts);
+            const shortlisted = validPcts.filter(p => p >= 75).length;
+            document.getElementById('avgMatch').textContent = avg + '%';
+            document.getElementById('topMatch').textContent = top + '%';
+            document.getElementById('shortlistCount').textContent = shortlisted;
+        }
+
+        // ── Chart 1: Match distribution (doughnut) ──
+        const strong = matchPcts.filter(p => p >= 75).length;
+        const moderate = matchPcts.filter(p => p >= 40 && p < 75).length;
+        const low = matchPcts.filter(p => p > 0 && p < 40).length;
+        const noMatch = matchPcts.filter(p => p === 0).length;
+        new Chart(document.getElementById('matchChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Strong (≥75%)', 'Moderate (40-74%)', 'Low (<40%)', 'No title set'],
+                datasets: [{
+                    data: [strong, moderate, low, noMatch],
+                    backgroundColor: ['#16a34a','#d97706','#dc2626','#374151'],
+                    borderColor: '#111827', borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+                cutout: '65%'
+            }
+        });
+
+        // ── Chart 2: Experience levels (bar) ──
+        const expMap = {};
+        experiences.forEach(e => {
+            const key = e.includes('Senior') ? 'Senior' :
+                        e.includes('Mid') ? 'Mid-level' :
+                        e.includes('Junior') ? 'Junior' :
+                        e.includes('Fresher') ? 'Fresher' : 'Not specified';
+            expMap[key] = (expMap[key] || 0) + 1;
+        });
+        new Chart(document.getElementById('expChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(expMap),
+                datasets: [{
+                    label: 'Candidates',
+                    data: Object.values(expMap),
+                    backgroundColor: ['#6366f1','#8b5cf6','#a855f7','#c084fc','#818cf8'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } },
+                    y: { ticks: { color: '#9ca3af', stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // ── Chart 3: Top skills (horizontal bar) ──
+        const skillFreq = {};
+        allSkillsRaw.forEach(s => {
+            const skill = s.trim();
+            if (skill) skillFreq[skill] = (skillFreq[skill] || 0) + 1;
+        });
+        const sorted = Object.entries(skillFreq).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        new Chart(document.getElementById('skillChart'), {
+            type: 'bar',
+            data: {
+                labels: sorted.map(([k]) => k),
+                datasets: [{
+                    label: 'Occurrences',
+                    data: sorted.map(([, v]) => v),
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#9ca3af', stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true },
+                    y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+    }
+}
+</script>
+</body>
+</html>

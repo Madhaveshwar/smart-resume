@@ -4,8 +4,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart ATS — Resume Filtering System</title>
+  <title>Smart ATS — Offline Resume Filtering</title>
+  <script>console.log("NEW VERSION - OFFLINE ATS");</script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="assets/css/style.css" />
   <style>
     .skill-chip {
@@ -133,11 +138,63 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold text-gray-300 mb-2">
-              Job Title <span class="text-gray-500 font-normal text-xs">(20 roles available)</span>
+              Job Title <span class="text-gray-500 font-normal text-xs">(50+ roles available)</span>
             </label>
             <select id="jobTitleSelect"
               class="w-full bg-gray-800 border border-gray-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">-- Select or leave blank --</option>
+              <option value="">-- Select a role --</option>
+              <optgroup label="Software & Engineering">
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="Backend Developer">Backend Developer</option>
+                <option value="Frontend Developer">Frontend Developer</option>
+                <option value="Full Stack Developer">Full Stack Developer</option>
+                <option value="DevOps Engineer">DevOps Engineer</option>
+                <option value="Cloud Architect">Cloud Architect</option>
+                <option value="Mobile Developer">Mobile Developer</option>
+                <option value="System Administrator">System Administrator</option>
+              </optgroup>
+              <optgroup label="AI & Data">
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="Data Engineer">Data Engineer</option>
+                <option value="Data Analyst">Data Analyst</option>
+                <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                <option value="AI Researcher">AI Researcher</option>
+                <option value="NLP Engineer">NLP Engineer</option>
+              </optgroup>
+              <optgroup label="Security">
+                <option value="Cybersecurity Analyst">Cybersecurity Analyst</option>
+                <option value="Information Security Engineer">Information Security Engineer</option>
+                <option value="Penetration Tester">Penetration Tester</option>
+                <option value="Security Architect">Security Architect</option>
+              </optgroup>
+              <optgroup label="Design & Product">
+                <option value="UI/UX Designer">UI/UX Designer</option>
+                <option value="Product Manager">Product Manager</option>
+                <option value="Product Designer">Product Designer</option>
+                <option value="Scrum Master">Scrum Master</option>
+              </optgroup>
+              <optgroup label="Business & Management">
+                <option value="Business Analyst">Business Analyst</option>
+                <option value="Marketing Manager">Marketing Manager</option>
+                <option value="HR Manager">HR Manager</option>
+                <option value="Talent Acquisition Specialist">Talent Acquisition Specialist</option>
+                <option value="Sales Executive">Sales Executive</option>
+              </optgroup>
+              <optgroup label="Healthcare">
+                <option value="Registered Nurse">Registered Nurse</option>
+                <option value="Medical Practitioner">Medical Practitioner</option>
+                <option value="Healthcare Administrator">Healthcare Administrator</option>
+              </optgroup>
+              <optgroup label="Traditional Engineering">
+                <option value="Mechanical Engineer">Mechanical Engineer</option>
+                <option value="Electrical Engineer">Electrical Engineer</option>
+                <option value="Civil Engineer">Civil Engineer</option>
+              </optgroup>
+              <optgroup label="Legal & Finance">
+                <option value="Financial Analyst">Financial Analyst</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Corporate Lawyer">Corporate Lawyer</option>
+              </optgroup>
             </select>
           </div>
           <div>
@@ -154,13 +211,13 @@
                 <span class="text-gray-400 text-sm">Drop files or <span
                     class="text-blue-400 font-medium">browse</span></span>
               </label>
-              <span id="fileCount" class="block text-xs text-gray-500 mt-1">No files selected</span>
+              <div id="filePillsContainer" class="flex flex-wrap gap-2 mt-4 justify-center"></div>
             </div>
           </div>
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-300 mb-2">
-            Job Description <span class="text-gray-500 font-normal">(optional — enables NLP cosine matching)</span>
+            Job Description <span class="text-gray-500 font-normal">(optional — enables deep AI matching)</span>
           </label>
           <textarea id="jobDescInput" rows="4"
             placeholder="Paste the full job description here for better AI matching..."
@@ -181,10 +238,18 @@
         <h2 class="text-2xl font-bold">Results <span id="resultJobTitle" class="text-blue-400"></span></h2>
         <p id="resultSubtitle" class="text-gray-500 text-sm mt-1"></p>
       </div>
-      <button id="uploadMoreBtn"
-        class="text-sm text-blue-400 hover:text-blue-300 border border-blue-800 px-4 py-2 rounded-xl transition-colors">
-        Upload more
-      </button>
+      <div class="flex gap-2 items-center flex-wrap justify-end">
+         <div class="flex bg-gray-900 border border-gray-700/50 rounded-lg p-1 sm:mr-3">
+           <button id="filterAll" class="filter-btn bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">All</button>
+           <button id="filterHigh" class="filter-btn bg-gray-800 text-gray-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">>80% Top</button>
+           <button id="filterMed" class="filter-btn bg-gray-800 text-gray-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">60–79%</button>
+           <button id="filterLow" class="filter-btn bg-gray-800 text-gray-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">&lt;60%</button>
+         </div>
+         <button onclick="location.reload()"
+           class="text-sm text-blue-400 hover:text-blue-300 border border-blue-800 px-4 py-1.5 rounded-xl transition-colors whitespace-nowrap font-bold bg-blue-900/20">
+           ← Back to Upload
+         </button>
+      </div>
     </div>
   </section>
 
@@ -197,6 +262,7 @@
   </footer>
 
   <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/extractor.js" defer></script>
   <script src="assets/js/components.js" defer></script>
   <script src="assets/js/upload.js" defer></script>
 </body>

@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function runSearch() {
   const keyword  = document.getElementById("searchInput").value.trim();
+  const normalizedKeyword = keyword.toLowerCase();
   const subtitle = document.getElementById("searchSubtitle");
   const cards    = document.getElementById("resumeCards");
 
@@ -38,10 +39,28 @@ async function runSearch() {
     const res     = await fetch(url);
     const resumes = await res.json();
 
+    const filteredResumes = normalizedKeyword
+      ? resumes.filter(r => {
+          const haystack = [
+            r.name,
+            r.fileName,
+            r.skills,
+            r.matchedSkills,
+            r.missingSkills,
+            r.profileSummary,
+            r.hiringDecision,
+            r.hiringImpact
+          ].join(' ').toLowerCase();
+          return haystack.includes(normalizedKeyword);
+        })
+      : resumes;
+
     if (keyword) {
-      subtitle.textContent = `Showing results for: "${keyword}"  (${resumes.length} found)`;
+      subtitle.textContent = `Showing results for: "${keyword}" (${filteredResumes.length} found)`;
+    } else {
+      subtitle.textContent = `Showing all resumes (${filteredResumes.length})`;
     }
-    cards.innerHTML = renderResumeCards(resumes, "search");
+    cards.innerHTML = renderResumeCards(filteredResumes);
   } catch (e) {
     cards.innerHTML = `<p class="text-red-400 text-center py-10">Error connecting to backend. Make sure the Spring Boot server is running.</p>`;
     console.error(e);

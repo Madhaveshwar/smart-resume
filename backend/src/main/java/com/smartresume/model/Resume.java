@@ -59,6 +59,36 @@ public class Resume {
     @Column(name = "recommended_roles", columnDefinition = "TEXT")
     private String recommendedRoles;
 
+    @Column(name = "skills_match")
+    private int skillsMatch;
+
+    @Column(name = "keyword_match")
+    private int keywordMatch;
+
+    @Column(name = "experience_match")
+    private int experienceMatch;
+
+    @Transient
+    private String whyScore;
+
+    @Transient
+    private String profileSummary;
+
+    @Transient
+    private String hiringImpact;
+
+    @Transient
+    private String hiringDecision;
+
+    @Transient
+    private String improvementPlan;
+
+    @Transient
+    private String recruiterNote;
+
+    @Transient
+    private String oneLineSummary;
+
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
 
@@ -100,6 +130,26 @@ public class Resume {
     public void setSuggestedJobs(String suggestedJobs) { this.suggestedJobs = suggestedJobs; }
     public String getRecommendedRoles() { return recommendedRoles; }
     public void setRecommendedRoles(String recommendedRoles) { this.recommendedRoles = recommendedRoles; }
+    public int getSkillsMatch() { return skillsMatch; }
+    public void setSkillsMatch(int skillsMatch) { this.skillsMatch = skillsMatch; }
+    public int getKeywordMatch() { return keywordMatch; }
+    public void setKeywordMatch(int keywordMatch) { this.keywordMatch = keywordMatch; }
+    public int getExperienceMatch() { return experienceMatch; }
+    public void setExperienceMatch(int experienceMatch) { this.experienceMatch = experienceMatch; }
+    public String getWhyScore() { return whyScore; }
+    public void setWhyScore(String whyScore) { this.whyScore = whyScore; }
+    public String getProfileSummary() { return profileSummary; }
+    public void setProfileSummary(String profileSummary) { this.profileSummary = profileSummary; }
+    public String getHiringImpact() { return hiringImpact; }
+    public void setHiringImpact(String hiringImpact) { this.hiringImpact = hiringImpact; }
+    public String getHiringDecision() { return hiringDecision; }
+    public void setHiringDecision(String hiringDecision) { this.hiringDecision = hiringDecision; }
+    public String getImprovementPlan() { return improvementPlan; }
+    public void setImprovementPlan(String improvementPlan) { this.improvementPlan = improvementPlan; }
+    public String getRecruiterNote() { return recruiterNote; }
+    public void setRecruiterNote(String recruiterNote) { this.recruiterNote = recruiterNote; }
+    public String getOneLineSummary() { return oneLineSummary; }
+    public void setOneLineSummary(String oneLineSummary) { this.oneLineSummary = oneLineSummary; }
     public LocalDateTime getUploadedAt() { return uploadedAt; }
     public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
 
@@ -115,4 +165,6 @@ public class Resume {
     @Transient public List<String> getSuggestionsList()    { return splitCsv(suggestions); }
     @Transient public List<String> getSuggestedJobsList()  { return splitCsv(suggestedJobs); }
     @Transient public List<String> getRecommendedRolesList() { return splitCsv(recommendedRoles); }
+    @Transient public List<String> getWhyScoreList()       { return splitCsv(whyScore); }
+    @Transient public List<String> getImprovementPlanList(){ return splitCsv(improvementPlan); }
 }
